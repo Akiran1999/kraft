@@ -1,0 +1,79 @@
+parameters:
+  - name: "artifact"
+stages:
+- stage: 
+  jobs:
+  - job: Build
+    pool:
+     name: Linux ABE Build Agent AKS
+    steps:
+    - task: Bash@3
+      displayName: 'Checkout'
+      inputs:
+        targetType: 'inline'
+        script: |
+          compositeNames=($(grep -o 'compositeName="[^"]*\|Composite name="[^"]*' "${XML}" | sed -e 's/compositeName="//' -e 's/Composite name="//' -e 's/"$//'))
+          echo "${compositeNames[@]}"
+          items_to_delete=$(ls "${TARGET}")
+          for item in $items_to_delete; do
+              if [[ ! "${compositeNames[@]}" =~ "$item" ]]; then
+                  item_to_delete="${TARGET}/$item"
+                  if [ -e "$item_to_delete" ]; then
+                     echo "deleting folder=$item_to_delete"
+                     rm -rf "$item_to_delete"
+                  else
+                     echo "Deleting file=$item_to_delete"
+                     rm "$item_to_delete"
+                  fi
+              fi
+          done
+    - task: Bash@3
+      displayName: Build-stage
+      inputs:
+        targetType: 'inline'
+        script: |
+          # Executing the build
+          log_file="${WORKSPACE}/build_logs.txt"
+          ${SAG_HOME}/common/AssetBuildEnvironment/bin/build.sh -Dbuild.output.dir=${WORKSPACE}/Builds -Dbuild.source.dir=${WORKSPACE}/IS -Dsag.install.dir=${SAG_HOME} 2>&1 | tee -a "$log_file"
+          chmod 754 -R ${WORKSPACE}/Builds
+          if grep -q "BUILD FAILED" build_logs.txt; then
+             echo "BUILD FAILED"
+             exit 1
+          fi
+    - task: CopyFiles@2
+      inputs:
+        SourceFolder: '$(Build.SourcesDirectory)'
+        Contents: |
+          Builds/**/*
+          Tests/**/*
+        TargetFolder: '$(Build.ArtifactStagingDirectory)'
+       
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: '${{ parameters.artifact }}'
+        publishLocation: 'Container'
+
+  - job: PassingCRToCD
+    dependsOn: 'Build'
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/uat'))
+    pool:
+     name: Linux ABE Build Agent
+    steps:
+    - task: Bash@3
+      displayName: 'Az Pipeline Variable Update'
+      condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/uat'))
+      inputs:
+        targetType: 'inline'
+        script: |
+          # az login --service-principal -u $(AZURE_CLIENT_ID) -p $(AZURE_CLIENT_SECRET) -t $(AZURE_TENANT_ID)
+          echo  "$(PAT_ACCESS)" | az devops login --organization https://dev.azure.com/dv-my01-sea-p-aie-general01
+          filePath="$(Build.SourcesDirectory)/${FILE_PATH}/UAT_changeNumber.txt"
+          if [ -f "$filePath" ]; then
+            changeRequestNumber=$(grep -oP 'ChangeRequestNumber=\K[^[:space:]]+' "$filePath")
+            if [ -n "$changeRequestNumber" ]; then
+                az pipelines variable-group variable update --group-id ${GROUP_ID} --name ChangeRequestNumber --value "$changeRequestNumber" --secret false --org https://dev.azure.com/dv-my01-sea-p-aie-general01 --project EIP
+            else
+                echo "ChangeRequestNumber not found in the file"
+            fi
+          fi
