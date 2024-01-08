@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aia-msr-platform-deployment
+  namespace: nsp-my-s-eip01
+  labels:
+    application: aia-msr-platform
+spec:
+  selector:
+    matchLabels:
+      application: eip
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        application: eip
+    spec:
+      securityContext:
+        runAsUser: 1724
+        runAsGroup: 1724
+        fsGroup: 1724
+#      affinity:
+#        podAffinity:
+#          requiredDuringSchedulingIgnoredDuringExecution:
+#          - labelSelector:
+#              matchExpressions:
+#              - key: agentpool
+#                operator: In
+#                values:
+#                - apppool1
+      hostname: aia-msr-platform
+      containers:
+      - name: aia-msr-platform
+        image: acrmy01seanshared01.azurecr.io/eip/wm/wm-msr-platform:v5
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5655
+          name: aia-msr-pfm
+      nodeSelector:
+        key: apppool1
+        volumeMounts:
+          # - name: wm-msr-platform-volume
+          #   mountPath: "/opt/softwareag/IntegrationServer/application.properties"
+          #   subPath: "application.properties"
+          - name: wm-msr-platform-volume
+            mountPath: "/opt/softwareag/IntegrationServer/config/Caching/AIA_Common_DB_Config.xml"
+            subPath: "AIA_Common_DB_Config.xml"
+          - name: wm-msr-platform-volume
+            mountPath: "/opt/softwareag/common/conf/terracotta-license.key"
+            subPath: "terracotta-license.key"
+                     
+      volumes:
+        - name: wm-msr-platform-volume
+          configMap:
+            name: wm-msr-platform-configmap
+            defaultMode: 0744
+       
+
+
+Error from server (BadRequest): error when creating "sag_wm_msr_dep.yaml": Deployment in version "v1" cannot be handled as a Deployment: json: cannot unmarshal array into Go struct field PodSpec.spec.template.spec.nodeSelector of type string
