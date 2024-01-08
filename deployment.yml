@@ -58,3 +58,9 @@ spec:
 
 
 Error from server (BadRequest): error when creating "sag_wm_msr_dep.yaml": Deployment in version "v1" cannot be handled as a Deployment: json: cannot unmarshal array into Go struct field PodSpec.spec.template.spec.nodeSelector of type string
+
+
+
+  Warning  FailedScheduling   6m23s                 default-scheduler   0/2 nodes are available: 1 node(s) didn't match Pod's node affinity/selector, 1 node(s) were unschedulable. preemption: 0/2 nodes are available: 2 Preemption is not helpful for scheduling..
+  Warning  FailedScheduling   54s                   default-scheduler   0/2 nodes are available: 1 node(s) didn't match Pod's node affinity/selector, 1 node(s) were unschedulable. preemption: 0/2 nodes are available: 2 Preemption is not helpful for scheduling..
+  Normal   NotTriggerScaleUp  76s (x31 over 6m18s)  cluster-autoscaler  pod didn't trigger scale-up: 1 node(s) didn't match Pod's node affinity/selector
