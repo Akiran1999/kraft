@@ -1,0 +1,2 @@
+
+There was a resource authorization issue: "An error occurred while loading the YAML build pipeline. Variable group was not found or is not authorized for use. For authorization details, refer to https://aka.ms/yamlauthz."
