@@ -1,0 +1,20 @@
+trigger:
+  branches:
+   include:
+   - refs/heads/develop
+variables:
+- group: sp-aks-my01-sea-d-eip-devops01
+resources:
+  repositories:
+  - repository: aia-pipeline-repo
+    type: bitbucket
+    endpoint: Bitbucket - kapmydevops
+    name: MYAIA/aia-pipeline-repo
+    ref: develop
+pool:
+  name: Linux Postman Build Agent
+
+stages:
+  - template: CI/MQ/azure-pipelines.yml@aia-pipeline-repo
+    parameters:
+      artifact: $(artifactName)
